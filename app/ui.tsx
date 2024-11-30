@@ -5,16 +5,33 @@ import Header from "@/components/header";
 import NewNote from "@/components/new-note";
 import NoteViewer from "@/components/note-viewer";
 import Sidebar from "@/components/sidebar";
-import { useState } from "react";
-
-const notes = [
-    { id: 1, title: 'note1', content: '내용입니다1' },
-    { id: 2, title: 'note2', content: '내용입니다2' },
-]
+import { supabase } from "@/utils/supabase";
+import { Database } from "@/types_db";
+import { useEffect, useState } from "react";
 
 export default function UI() {
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [isCreating, setIsCreating] = useState(true);
+    const [notes, setNotes] = useState<
+      Database['public']['Tables']['note']['Row'][]
+    >([]);
+    const [search, setSearch] = useState("");
+
+    const fetchNotes = async () => {
+      const { data, error } = await supabase.from('note')
+        .select('*')
+        .ilike('title', `%${search}%`);
+
+      if (error) {
+        alert(error.message)
+        return
+      }
+      setNotes(data)
+    }
+
+    useEffect(() => {
+      fetchNotes()
+    }, [search])
 
     return (
         <main className="w-full h-screen flex flex-col">
@@ -25,13 +42,23 @@ export default function UI() {
               setActiveNoteId={setActiveNoteId}
               setIsCreating={setIsCreating} 
               notes={notes} 
+              search={search}
+              setSearch={setSearch}
             />            
             {
               isCreating ? (
-                <NewNote setIsCreating={setIsCreating} />
+                <NewNote 
+                  fetchNotes={fetchNotes} 
+                  setActiveNoteId={setActiveNoteId} 
+                  setIsCreating={setIsCreating} 
+                />
               )
               : activeNoteId ? (
-                <NoteViewer note={notes.find(note => note.id === activeNoteId)} />
+                <NoteViewer 
+                  note={notes.find(note => note.id === activeNoteId)} 
+                  setActiveNoteId={setActiveNoteId} 
+                  fetchNotes={fetchNotes}
+                />
               )
               : (
                 <EmptyNote />
